@@ -30,8 +30,6 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
-
       - name: Générer les icônes
         working-directory: app
         run: |
@@ -48,7 +46,9 @@ jobs:
 
       - name: Compiler l'APK
         working-directory: app/android
-        run: ./gradlew assembleRelease --no-daemon
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          ./gradlew assembleRelease --no-daemon
 
       - name: Renommer l'APK
         run: cp app/android/app/build/outputs/apk/release/app-release.apk BE-BETTER.apk
