@@ -3,6 +3,7 @@ name: Build APK
 on:
   push:
     branches: [main]
+    paths: ['bundle.b64', '.github/workflows/**']
   workflow_dispatch:
 
 permissions:
@@ -12,6 +13,8 @@ jobs:
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      APP_VERSION: 2.0.${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
@@ -30,9 +33,18 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Générer les icônes
+      - name: Version et icônes
         working-directory: app
         run: |
+          python3 - <<'PY'
+          import json, os
+          a = json.load(open('app.json'))
+          v = os.environ['APP_VERSION']
+          a['expo']['version'] = v
+          a['expo']['android']['versionCode'] = 20000 + int(v.split('.')[-1])
+          json.dump(a, open('app.json', 'w'), ensure_ascii=False, indent=2)
+          print('version', v)
+          PY
           pip install --quiet pillow
           python3 scripts/gen_icons.py
 
@@ -44,8 +56,22 @@ jobs:
         working-directory: app
         run: npx expo prebuild -p android --no-install
 
+      - name: Signature permanente
+        working-directory: app
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > android/app/release.keystore
+            python3 scripts/sign_release.py
+          else
+            echo "::warning::Secret KEYSTORE_B64 absent : APK signé avec la clé de test"
+          fi
+
       - name: Compiler l'APK
         working-directory: app/android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           ./gradlew assembleRelease --no-daemon
@@ -61,8 +87,8 @@ jobs:
       - name: Publier la version (lien de téléchargement)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: BE BETTER 1.0.${{ github.run_number }}
+          tag_name: v${{ env.APP_VERSION }}
+          name: BE BETTER ${{ env.APP_VERSION }}
           body: APK Android de BE BETTER. Télécharge BE-BETTER.apk depuis ton téléphone puis installe-le.
           files: BE-BETTER.apk
           make_latest: true
