@@ -3,7 +3,7 @@ name: Build APK
 on:
   push:
     branches: [main]
-    paths: ['bundle.b64', '.github/workflows/**']
+    paths: ['bundle.b64']
   workflow_dispatch:
 
 permissions:
@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      APP_VERSION: 2.0.${{ github.run_number }}
+      APP_VERSION: 3.0.${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
@@ -41,7 +41,7 @@ jobs:
           a = json.load(open('app.json'))
           v = os.environ['APP_VERSION']
           a['expo']['version'] = v
-          a['expo']['android']['versionCode'] = 20000 + int(v.split('.')[-1])
+          a['expo']['android']['versionCode'] = 30000 + int(v.split('.')[-1])
           json.dump(a, open('app.json', 'w'), ensure_ascii=False, indent=2)
           print('version', v)
           PY
