@@ -3,7 +3,7 @@ name: Build APK
 on:
   push:
     branches: [main]
-    paths: ['bundle.b64']
+    paths: ['bundle.b64', 'patch.b64']
   workflow_dispatch:
 
 permissions:
@@ -22,6 +22,7 @@ jobs:
         run: |
           tr -d ' \n\r' < bundle.b64 | base64 -d > bundle.txz
           tar xJf bundle.txz
+          if [ -f patch.b64 ]; then tr -d ' \n\r' < patch.b64 | base64 -d > patch.txz && tar xJf patch.txz && echo "patch appliqué"; fi
           mv be-better app
 
       - uses: actions/setup-node@v4
@@ -84,11 +85,16 @@ jobs:
           name: BE-BETTER-apk
           path: BE-BETTER.apk
 
+      - name: Notes de version
+        run: |
+          if [ -f app/release-notes.md ]; then cp app/release-notes.md release-notes.md
+          else echo "APK Android de BE BETTER. Télécharge BE-BETTER.apk depuis ton téléphone puis installe-le." > release-notes.md; fi
+
       - name: Publier la version (lien de téléchargement)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.APP_VERSION }}
           name: BE BETTER ${{ env.APP_VERSION }}
-          body: APK Android de BE BETTER. Télécharge BE-BETTER.apk depuis ton téléphone puis installe-le.
+          body_path: release-notes.md
           files: BE-BETTER.apk
           make_latest: true
